@@ -311,60 +311,6 @@ void stepperControl()
   // }
 }
 
-// void stepperControl()
-// {
-//   stepperOut = abs(so);
-//   // Serial.print("stepper Out: ");
-//   // Serial.println(stepperOut);
-
-//   if (stepperOut > 1023)
-//   {
-//     stepperOut = 1023;
-//   }
-
-//   stepperOut = map(abs(so), 0, 1023, 0, 2500);
-
-//   unsigned long currentMillis = millis();
-//   if (currentMillis - lastAccumulationTime >= 1000)
-//   {
-//     lastAccumulationTime = currentMillis;
-//     soAccumulated += so;
-//     Serial.println(soAccumulated);
-
-//     if (soAccumulated > 600 || soAccumulated < -600)
-//     {
-//       so = 0; // Reset so immediately
-//       // soAccumulated = 0; // Reset accumulator
-//       Serial.println("Accumulated so exceeded, resetting so to 0");
-//       Serial.println(so);
-//       accumulated = 1;
-//     }
-//   }
-
-//   if (so > 0 && accumulated == 0)
-//   {
-//     digitalWrite(driverDIR, LOW);
-//     setFrequency(stepperOut, driverPUL);
-//   }
-//   else if (so < 0 && accumulated == 0)
-//   {
-//     digitalWrite(driverDIR, HIGH);
-//     setFrequency(stepperOut, driverPUL);
-//   }
-//   else
-//   {
-//     setFrequency(0, driverPUL);
-//     // digitalWrite(driverPUL, LOW);
-//     Serial.println("000000000");
-//   }
-
-//   // stepperPulseDelay = map(stepperOut,0,1023,2000,5);
-//   // digitalWrite(driverPUL,HIGH);
-//   // delayMicroseconds(stepperPulseDelay);
-//   // digitalWrite(driverPUL,LOW);
-//   // delayMicroseconds(stepperPulseDelay);
-// }
-
 void printSerialData()
 {
   unsigned long currentMillis = millis();
@@ -424,11 +370,7 @@ void setup()
 
   steerPosCenter = digitalRead(inductiveProx);
 
-  // xTaskCreate(TaskPIDControl, "PID", 128, NULL, 1, NULL);
-  // xTaskCreate(TaskSerialPrint, "Serial Print", 128, NULL, 2, NULL);
-  // setFrequency(1000, 11);
   // setFrequency(2000, driverPUL);
-
   // digitalWrite(driverDIR, LOW);
 }
 
@@ -487,13 +429,6 @@ void loop()
   {
     digitalWrite(brakeRelay, HIGH);
   }
-
-  // setFrequency(100, driverPUL);
-  // setFrequency(0, driverPUL);
-  // digitalWrite(brakeRelay, HIGH);
-  // delay(3000);
-  // digitalWrite(brakeRelay, LOW);
-  // delay(3000);
 }
 
 /*

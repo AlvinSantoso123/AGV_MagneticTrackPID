@@ -242,31 +242,31 @@ void stepperControl()
   unsigned long currentMillis = millis();
   if (currentMillis - lastAccumulationTime >= 20) // shorter interval → smoother
   {
-    // Serial.print("SO: ");
-    // Serial.println(so);
+    Serial.print("SO: ");
+    Serial.println(so);
     lastAccumulationTime = currentMillis;
-    // soAccumulated += (so / 20.0); //Klo mau limit, ini dinyalakan
+    soAccumulated += (so / 20.0); //Klo mau limit, ini dinyalakan
 
-    // Serial.print("SO Acc: ");
-    // Serial.println(soAccumulated);
+    Serial.print("SO Acc: ");
+    Serial.println(soAccumulated);
 
-    // if (soAccumulated > 300)
-    // {
-    //   accumulated = 1;
-    //   limitDirection = +1; // right side limit
-    //   Serial.println(">>> Right limit reached <<<");
-    // }
-    // else if (soAccumulated < -300)
-    // {
-    //   accumulated = 1;
-    //   limitDirection = -1; // left side limit
-    //   Serial.println(">>> Left limit reached <<<");
-    // }
+    if (soAccumulated > 300)
+    {
+      accumulated = 1;
+      limitDirection = +1; // right side limit
+      Serial.println(">>> Right limit reached <<<");
+    }
+    else if (soAccumulated < -300)
+    {
+      accumulated = 1;
+      limitDirection = -1; // left side limit
+      Serial.println(">>> Left limit reached <<<");
+    }
   }
 
   // Safety logic
-  // if (accumulated == 0)
-  if (true)
+  if (accumulated == 0)
+  // if (true)
   {
     Serial.println("OPERATIONAL");
     // Normal operation
@@ -392,32 +392,25 @@ void loop()
     Serial.println("Please center the steering wheel");
   }
 
+  steerPosCenter = digitalRead(inductiveProx);
+
+  if (steerPosCenter == LOW)
+  {
+    steerPosOK = 1;
+    soAccumulated = 0; // Reset accumulator
+    accumulated = 0;
+  }
+  else if (steerPosOK == 0 && steerPosCenter == HIGH)
+  {
+    Serial.println("Please center the steering wheel");
+  }
+
   if (steerPosOK)
   {
     readMS();
     stepperControl();
-    printSerialData(); // Klo mau I, ini harus jalan
+    // printSerialData();
   }
-
-  // steerPosCenter = digitalRead(inductiveProx);
-
-  // if (steerPosCenter == LOW)
-  // {
-  //   steerPosOK = 1;
-  //   soAccumulated = 0; // Reset accumulator
-  //   accumulated = 0;
-  // }
-  // else if (steerPosOK == 0 && steerPosCenter == HIGH)
-  // {
-  //   Serial.println("Please center the steering wheel");
-  // }
-
-  // if (steerPosOK)
-  // {
-  //   readMS();
-  //   stepperControl();
-  //   // printSerialData();
-  // }
 
   brakeSwitchState = digitalRead(brakeSwitch);
 

@@ -31,7 +31,9 @@ int steerPosOK = 0;
 int accumulated = 0;
 int limitDirection = 0;
 float soAccumulated = 0;
-unsigned long lastAccumulationTime = 0;
+unsigned long lastSampling = 0;
+
+volatile unsigned long pulseToggleCount = 0;
 
 int dir = 0;
 
@@ -139,6 +141,11 @@ void setFrequency(uint32_t frequency, uint8_t pin)
   }
 }
 
+ISR(TIMER1_COMPA_vect)
+{
+  pulseToggleCount++;
+}
+
 void readMS()
 {
   si = analogRead(si_pin);
@@ -222,11 +229,11 @@ void stepperControl()
   }
 
   unsigned long currentMillis = millis();
-  if (currentMillis - lastAccumulationTime >= 100)
+  if (currentMillis - lastSampling >= 100)
   {
     Serial.print("SO: ");
     Serial.println(so);
-    lastAccumulationTime = currentMillis;
+    lastSampling = currentMillis;
     if (dir == 1)
     {
       soAccumulated = soAccumulated + 1;
@@ -345,8 +352,8 @@ void setup()
 
   steerPosCenter = digitalRead(inductiveProx);
 
-  // setFrequency(2000, driverPUL);
-  // digitalWrite(driverDIR, LOW);
+  setFrequency(100, driverPUL);
+  digitalWrite(driverDIR, LOW);
 }
 
 void loop()
@@ -360,32 +367,54 @@ void loop()
     accumulated = 0;    // Clear limit
     limitDirection = 0; // Clear direction
 
-    digitalWrite(driverRelay, LOW);
+    // digitalWrite(driverRelay, LOW);
   }
   else if (steerPosOK == 0 && steerPosCenter == HIGH)
   {
     Serial.println("Please center the steering wheel");
   }
 
-  steerPosCenter = digitalRead(inductiveProx);
-
-  // if (steerPosCenter == LOW)
-  // {
-  //   steerPosOK = 1;
-  //   soAccumulated = 0; // Reset accumulator
-  //   accumulated = 0;
-  // }
-  // else if (steerPosOK == 0 && steerPosCenter == HIGH)
-  // {
-  //   Serial.println("Please center the steering wheel");
-  // }
-
   // if (steerPosOK)
   if (true)
   {
-    readMS();
-    stepperControl();
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastSampling >= 1000)
+    {
+      Serial.print("SO: ");
+      Serial.println(so);
+      lastSampling = currentMillis;
+      // if (dir == 1)
+      // {
+      //   soAccumulated = soAccumulated + 1;
+      // }
+      // else if (dir == 0)
+      // {
+      //   soAccumulated = soAccumulated - 1;
+      // }
+
+      // Serial.print("SO Acc: ");
+      // Serial.println(soAccumulated);
+
+      if (soAccumulated > 2)
+      {
+        accumulated = 1;
+        limitDirection = 1; // right side limit
+        Serial.println(">>> Right limit reached <<<");
+      }
+      else if (soAccumulated < -2)
+      {
+        accumulated = 1;
+        limitDirection = -1; // left side limit
+        Serial.println(">>> Left limit reached <<<");
+      }
+    }
+
+    // readMS();
+    // stepperControl();
     // printSerialData();
+    unsigned long pulses = pulseToggleCount / 2; // 1 pulse = 2 toggle (HIGH LOW)
+    Serial.print("Pulses sent: ");
+    Serial.println(pulses);
   }
 }
 

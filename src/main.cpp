@@ -30,12 +30,15 @@ int steerPosCenter = 0;
 int steerPosOK = 0;
 int accumulated = 0;
 int limitDirection = 0;
-float soAccumulated = 0;
 unsigned long lastSampling = 0;
 
-volatile unsigned long pulseToggleCount = 0;
-
 int dir = 0;
+int prevDir = 0;
+
+volatile unsigned long pulseToggleCount = 0;
+unsigned long lastPulseToggleCount = 0;
+long pulseAccumulated = 0;
+int pulseLimit = 4000;
 
 void setFrequency(uint32_t frequency, uint8_t pin)
 {
@@ -45,6 +48,7 @@ void setFrequency(uint32_t frequency, uint8_t pin)
     // Disable Timer1
     TCCR1A = 0;
     TCCR1B = 0;
+    TIMSK1 &= ~(1 << OCIE1A); // Disable interrupt
 
     // Ensure pin is not toggling anymore
     pinMode(pin, OUTPUT);
@@ -139,6 +143,8 @@ void setFrequency(uint32_t frequency, uint8_t pin)
     Serial.println("Invalid pin for Timer1 output.");
     return;
   }
+
+  TIMSK1 |= (1 << OCIE1A);
 }
 
 ISR(TIMER1_COMPA_vect)
@@ -166,7 +172,7 @@ void readMS()
   {
     integral = 10000;
   }
-  else if (integral <= -10000)
+  else if (integral <= 00000)
   {
     integral = -10000;
   }
@@ -216,7 +222,7 @@ void stepperControl()
   stepperOut = abs(so);
   if (stepperOut > 1023)
     stepperOut = 1023;
-
+    
   stepperOut = map(abs(so), 0, 1023, 0, 6000); // 7000
 
   if (so > 0)
@@ -228,36 +234,48 @@ void stepperControl()
     dir = 1;
   }
 
-  unsigned long currentMillis = millis();
-  if (currentMillis - lastSampling >= 100)
+  Serial.print("SO: ");
+  Serial.println(so);
+  pulseAccumulated = pulseToggleCount / 2; // 1 pulse = 2 toggle (HIGH LOW)
+                                           // Serial.print("Pulses sent: ");
+                                           // Serial.println(pulseAccumulated);
+
+  // Calculate new toggles since last read
+  unsigned long toggleDelta = pulseToggleCount - lastPulseToggleCount;
+  lastPulseToggleCount = pulseToggleCount;
+
+  // Each pulse = 2 toggles (HIGH + LOW)
+  long pulseDelta = toggleDelta / 2;
+
+  // Adjust sign based on direction
+  if (dir == 0)
   {
-    Serial.print("SO: ");
-    Serial.println(so);
-    lastSampling = currentMillis;
-    if (dir == 1)
-    {
-      soAccumulated = soAccumulated + 1;
-    }
-    else if (dir == 0)
-    {
-      soAccumulated = soAccumulated - 1;
-    }
+    pulseAccumulated += pulseDelta; // CW adds
+  }
+  else
+  {
+    pulseAccumulated -= pulseDelta; // CCW subtracts
+  }
 
-    Serial.print("SO Acc: ");
-    Serial.println(soAccumulated);
+  // Print for debugging
+  Serial.print("Direction: ");
+  Serial.print(dir == 0 ? "CW" : "CCW");
+  Serial.print(" | Pulses (Δ): ");
+  Serial.print(pulseDelta);
+  Serial.print(" | Accumulated: ");
+  Serial.println(pulseAccumulated);
 
-    if (soAccumulated > 2)
-    {
-      accumulated = 1;
-      limitDirection = 1; // right side limit
-      Serial.println(">>> Right limit reached <<<");
-    }
-    else if (soAccumulated < -2)
-    {
-      accumulated = 1;
-      limitDirection = -1; // left side limit
-      Serial.println(">>> Left limit reached <<<");
-    }
+  if (pulseAccumulated > pulseLimit)
+  {
+    accumulated = 1;
+    limitDirection = 1; // right side limit
+    Serial.println("Right limit reached");
+  }
+  else if (pulseAccumulated < -pulseLimit)
+  {
+    accumulated = 1;
+    limitDirection = 0; // left side limit
+    Serial.println("Left limit reached");
   }
 
   if (accumulated == 1)
@@ -267,7 +285,7 @@ void stepperControl()
       setFrequency(0, driverPUL);
       // Serial.println("asdasdasd");
     }
-    else if (limitDirection == -1 && dir == 0)
+    else if (limitDirection == 0 && dir == 0)
     {
       setFrequency(0, driverPUL);
       // Serial.println("werwer");
@@ -278,7 +296,7 @@ void stepperControl()
       setFrequency(1600, driverPUL);
       // Serial.println("kjkjkjkjkjk");
     }
-    else if (limitDirection == -1 && dir == 1)
+    else if (limitDirection == 0 && dir == 1)
     {
       digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
       setFrequency(1600, driverPUL);
@@ -349,6 +367,7 @@ void setup()
 
   Serial.begin(9600);
   Serial.println("Start");
+  sei(); // Enable global interrupts
 
   steerPosCenter = digitalRead(inductiveProx);
 
@@ -363,9 +382,9 @@ void loop()
   if (steerPosCenter == LOW)
   {
     steerPosOK = 1;
-    soAccumulated = 0;  // Reset accumulator
-    accumulated = 0;    // Clear limit
-    limitDirection = 0; // Clear direction
+    pulseAccumulated = 0; // Reset accumulator
+    accumulated = 0;      // Clear limit
+    limitDirection = 0;   // Clear direction
 
     // digitalWrite(driverRelay, LOW);
   }
@@ -380,41 +399,16 @@ void loop()
     unsigned long currentMillis = millis();
     if (currentMillis - lastSampling >= 1000)
     {
-      Serial.print("SO: ");
-      Serial.println(so);
       lastSampling = currentMillis;
-      // if (dir == 1)
-      // {
-      //   soAccumulated = soAccumulated + 1;
-      // }
-      // else if (dir == 0)
-      // {
-      //   soAccumulated = soAccumulated - 1;
-      // }
+      // pulseAccumulated = pulseToggleCount / 2; // 1 pulse = 2 toggle (HIGH LOW)
+      // Serial.print("Pulses sent: ");
+      // Serial.println(pulseAccumulated);
+      // pulseToggleCount = 0;
+      // Serial.println(pulseToggleCount);
 
-      // Serial.print("SO Acc: ");
-      // Serial.println(soAccumulated);
-
-      if (soAccumulated > 2)
-      {
-        accumulated = 1;
-        limitDirection = 1; // right side limit
-        Serial.println(">>> Right limit reached <<<");
-      }
-      else if (soAccumulated < -2)
-      {
-        accumulated = 1;
-        limitDirection = -1; // left side limit
-        Serial.println(">>> Left limit reached <<<");
-      }
+      readMS();
+      stepperControl();
     }
-
-    // readMS();
-    // stepperControl();
-    // printSerialData();
-    unsigned long pulses = pulseToggleCount / 2; // 1 pulse = 2 toggle (HIGH LOW)
-    Serial.print("Pulses sent: ");
-    Serial.println(pulses);
   }
 }
 

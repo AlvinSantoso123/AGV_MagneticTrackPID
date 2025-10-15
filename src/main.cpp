@@ -1,46 +1,17 @@
 #include <Arduino.h>
 
 #define si_pin A1
-// test
-/*
-Proportional Control
-
-sp = Set Point
-so = System Output (Sensor Sensed Value)
-si = System Input
-e = Error
-k = Proportional Gain Factor
-b = Bias
-sp = 1.5V = 300 ADC Bit
-
-so = K * e + b
-e = sp - so
-
-A+ A- B+ B-
-GR BLK RED BLU
-*/
 
 float si, e, so, integral, derivative, ePrevious = 0;
 const int controlMode = 0;
 
 const float sp = 300;
 
-const float Kp = 7.0; //5
+const float Kp = 5.0; // 5
 const float Ki = 0.01;
 const float Kd = 1.0;
 
 const float b = 0;
-
-/*
-Stepper Motor
-
-Pin PUL dikasih pulse buat ngatur kecepatan, freq up, speed up
-Pin DIR dikasih HIGH/LOW buat ngatur arah
-Dri datasheet: Pulse Frequency Max = 200K (harusnya Hz, tpi di ds cm tulis 200K)
-
-+/- dari so buat ngatur DIR, nilai dari so buat ngatur frekuensi pulse
-Kalo terlalu lambat atau kurang cepat banting setirnya, Gain (K) nya diganti
-*/
 
 #define driverPUL 11
 #define driverDIR 10
@@ -61,6 +32,8 @@ int accumulated = 0;
 int limitDirection = 0;
 float soAccumulated = 0;
 unsigned long lastAccumulationTime = 0;
+
+int dir = 0;
 
 void setFrequency(uint32_t frequency, uint8_t pin)
 {
@@ -239,24 +212,40 @@ void stepperControl()
 
   stepperOut = map(abs(so), 0, 1023, 0, 6000); // 7000
 
+  if (so > 0)
+  {
+    dir = 0;
+  }
+  else if (so < 0)
+  {
+    dir = 1;
+  }
+
   unsigned long currentMillis = millis();
-  if (currentMillis - lastAccumulationTime >= 20) // shorter interval → smoother
+  if (currentMillis - lastAccumulationTime >= 100)
   {
     Serial.print("SO: ");
     Serial.println(so);
     lastAccumulationTime = currentMillis;
-    soAccumulated += (so / 20.0); //Klo mau limit, ini dinyalakan
+    if (dir == 1)
+    {
+      soAccumulated = soAccumulated + 1;
+    }
+    else if (dir == 0)
+    {
+      soAccumulated = soAccumulated - 1;
+    }
 
     Serial.print("SO Acc: ");
     Serial.println(soAccumulated);
 
-    if (soAccumulated > 300)
+    if (soAccumulated > 2)
     {
       accumulated = 1;
-      limitDirection = +1; // right side limit
+      limitDirection = 1; // right side limit
       Serial.println(">>> Right limit reached <<<");
     }
-    else if (soAccumulated < -300)
+    else if (soAccumulated < -2)
     {
       accumulated = 1;
       limitDirection = -1; // left side limit
@@ -264,51 +253,37 @@ void stepperControl()
     }
   }
 
-  // Safety logic
-  if (accumulated == 0)
-  // if (true)
+  if (accumulated == 1)
   {
-    Serial.println("OPERATIONAL");
-    // Normal operation
-    if (so > 0)
-    {
-      digitalWrite(driverDIR, LOW); // Klo ganti driver ini disesuaikan
-      setFrequency(stepperOut, driverPUL);
-      Serial.println("so>0");
-    }
-    else if (so < 0)
-    {
-      digitalWrite(driverDIR, HIGH); // Klo ganti driver ini disesuaikan
-      setFrequency(stepperOut, driverPUL);
-      Serial.println("so<0");
-    }
-    else
+    if (limitDirection == 1 && dir == 1)
     {
       setFrequency(0, driverPUL);
-      Serial.println("STOP");
+      // Serial.println("asdasdasd");
+    }
+    else if (limitDirection == -1 && dir == 0)
+    {
+      setFrequency(0, driverPUL);
+      // Serial.println("werwer");
+    }
+    else if (limitDirection == 1 && dir == 0)
+    {
+      digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
+      setFrequency(1600, driverPUL);
+      // Serial.println("kjkjkjkjkjk");
+    }
+    else if (limitDirection == -1 && dir == 1)
+    {
+      digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
+      setFrequency(1600, driverPUL);
+      // Serial.println("hthththththt");
     }
   }
-  // else
-  // {
-  //   // Limit reached: only allow opposite direction
-  //   if (limitDirection == +1 && so < 0)
-  //   {
-  //     // allow left movement
-  //     digitalWrite(driverDIR, LOW);
-  //     setFrequency(stepperOut, driverPUL);
-  //   }
-  //   else if (limitDirection == -1 && so > 0)
-  //   {
-  //     // allow right movement
-  //     digitalWrite(driverDIR, HIGH);
-  //     setFrequency(stepperOut, driverPUL);
-  //   }
-  //   else
-  //   {
-  //     // block further movement
-  //     setFrequency(0, driverPUL);
-  //   }
-  // }
+  else if (accumulated == 0)
+  {
+    digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
+    setFrequency(1600, driverPUL);
+    // Serial.println("poppopopop");
+  }
 }
 
 void printSerialData()
@@ -394,52 +369,51 @@ void loop()
 
   steerPosCenter = digitalRead(inductiveProx);
 
-  if (steerPosCenter == LOW)
-  {
-    steerPosOK = 1;
-    soAccumulated = 0; // Reset accumulator
-    accumulated = 0;
-  }
-  else if (steerPosOK == 0 && steerPosCenter == HIGH)
-  {
-    Serial.println("Please center the steering wheel");
-  }
+  // if (steerPosCenter == LOW)
+  // {
+  //   steerPosOK = 1;
+  //   soAccumulated = 0; // Reset accumulator
+  //   accumulated = 0;
+  // }
+  // else if (steerPosOK == 0 && steerPosCenter == HIGH)
+  // {
+  //   Serial.println("Please center the steering wheel");
+  // }
 
-  if (steerPosOK)
+  // if (steerPosOK)
+  if (true)
   {
     readMS();
     stepperControl();
     // printSerialData();
   }
-
-  brakeSwitchState = digitalRead(brakeSwitch);
-
-  if (brakeSwitchState == HIGH)
-  {
-    digitalWrite(brakeRelay, LOW);
-  }
-  else
-  {
-    digitalWrite(brakeRelay, HIGH);
-  }
 }
 
 /*
-Reference
+Stepper Motor
 
-INI BUAT DRIVER LAMA
+Pin PUL dikasih pulse buat ngatur kecepatan, freq up, speed up
+Pin DIR dikasih HIGH/LOW buat ngatur arah
+Dri datasheet: Pulse Frequency Max = 200K (harusnya Hz, tpi di ds cm tulis 200K)
 
-Remarks from HBS86H Hybrid Stepper Servo Driver Manual
-a. t1: ENA must be ahead of DIR by at least 5μ s. Usually, ENA+ and
-ENA- are NC (not connected).
-b. t2: DIR must be ahead of PUL active edge by 6μ s to ensure correct
-direction;
-c. t3: Pulse width not less than 2.5μs;
-d. t4: Low level width not less than 2.5μs.
++/- dari so buat ngatur DIR, nilai dari so buat ngatur frekuensi pulse
+Kalo terlalu lambat atau kurang cepat banting setirnya, Gain (K) nya diganti
+*/
 
-ArduinoPWM
-https://docs.arduino.cc/learn/microcontrollers/analog-output/
+/*
+Proportional Control
 
-Control Stepper Motor with Arduino by dronebotworkshop
-https://dronebotworkshop.com/big-stepper-motors/
+sp = Set Point
+so = System Output (Sensor Sensed Value)
+si = System Input
+e = Error
+k = Proportional Gain Factor
+b = Bias
+sp = 1.5V = 300 ADC Bit
+
+so = K * e + b
+e = sp - so
+
+A+ A- B+ B-
+GR BLK RED BLU
 */

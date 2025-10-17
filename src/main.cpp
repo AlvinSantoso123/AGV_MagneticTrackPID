@@ -7,7 +7,7 @@ const int controlMode = 0;
 
 const float sp = 300;
 
-const float Kp = 5.0; // 5
+const float Kp = 2; // 5
 const float Ki = 0.01;
 const float Kd = 1.0;
 
@@ -243,27 +243,37 @@ void stepperControl()
   // Serial.println(pulseAccumulated);
 
   // Calculate new toggles since last read
-  toggleDelta = pulseToggleCount - lastPulseToggleCount;
-  lastPulseToggleCount = pulseToggleCount;
+  // toggleDelta = pulseToggleCount - lastPulseToggleCount;
+  // lastPulseToggleCount = pulseToggleCount;
 
-  // Each pulse = 2 toggles (HIGH + LOW)
-  pulseDelta = toggleDelta / 2;
+  // // Each pulse = 2 toggles (HIGH + LOW)
+  // pulseDelta = toggleDelta / 2;
+
+  static unsigned long lastUpdateMicros = micros();
+  unsigned long now = micros();
+  float dt = (now - lastUpdateMicros) / 1e6; // seconds
+  lastUpdateMicros = now;
+  float stepsThisCycle = stepperOut * dt; // steps = Hz * seconds
 
   // Adjust sign based on direction
   if (dir == 0)
   {
-    pulseAccumulated += pulseDelta; // kanan nambah
+    // pulseAccumulated += pulseDelta; // kanan nambah
+    pulseAccumulated += stepsThisCycle;
     Serial.println("KANANNNN");
   }
   else
   {
-    pulseAccumulated -= pulseDelta; // kiri ngurang
+    // pulseAccumulated -= pulseDelta; // kiri ngurang
+    pulseAccumulated -= stepsThisCycle;
     Serial.println("KIRIIII");
   }
 
   // Print for debugging
-  Serial.print(" | Pulses (Δ): ");
-  Serial.print(pulseDelta);
+  Serial.print("stepperout: ");
+  Serial.print(stepperOut);
+  Serial.print(" | Steps (Δ): ");
+  Serial.print(stepsThisCycle);
   Serial.print(" | Accumulated: ");
   Serial.println(pulseAccumulated);
 
@@ -423,8 +433,9 @@ void loop()
   if (steerPosOK)
   // if (true)
   {
-    unsigned long currentMillis = millis();
-    if (currentMillis - lastSampling >= 10)
+    unsigned long currentMillis = micros();
+    if (currentMillis - lastSampling >= 100)
+    // if (true)
     {
       lastSampling = currentMillis;
       // pulseAccumulated = pulseToggleCount / 2; // 1 pulse = 2 toggle (HIGH LOW)

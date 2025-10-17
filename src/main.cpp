@@ -37,8 +37,10 @@ int prevDir = 0;
 
 volatile unsigned long pulseToggleCount = 0;
 unsigned long lastPulseToggleCount = 0;
-long pulseAccumulated = 0;
-int pulseLimit = 4000;
+int pulseAccumulated = 0;
+int pulseLimit = 200;
+int pulseDelta = 0;
+int toggleDelta = 0;
 
 void setFrequency(uint32_t frequency, uint8_t pin)
 {
@@ -222,44 +224,44 @@ void stepperControl()
   stepperOut = abs(so);
   if (stepperOut > 1023)
     stepperOut = 1023;
-    
+
   stepperOut = map(abs(so), 0, 1023, 0, 6000); // 7000
 
-  if (so > 0)
+  if (so > 0) // 0 = KANAN, 1 = KIRI
   {
-    dir = 0;
+    dir = 0; // so nya + -> kanan
   }
   else if (so < 0)
   {
-    dir = 1;
+    dir = 1; // so nya - -> kiri
   }
 
   Serial.print("SO: ");
   Serial.println(so);
-  pulseAccumulated = pulseToggleCount / 2; // 1 pulse = 2 toggle (HIGH LOW)
-                                           // Serial.print("Pulses sent: ");
-                                           // Serial.println(pulseAccumulated);
+  // pulseAccumulated = pulseToggleCount / 2; // 1 pulse = 2 toggle (HIGH LOW)
+  // Serial.print("Pulses sent: ");
+  // Serial.println(pulseAccumulated);
 
   // Calculate new toggles since last read
-  unsigned long toggleDelta = pulseToggleCount - lastPulseToggleCount;
+  toggleDelta = pulseToggleCount - lastPulseToggleCount;
   lastPulseToggleCount = pulseToggleCount;
 
   // Each pulse = 2 toggles (HIGH + LOW)
-  long pulseDelta = toggleDelta / 2;
+  pulseDelta = toggleDelta / 2;
 
   // Adjust sign based on direction
   if (dir == 0)
   {
-    pulseAccumulated += pulseDelta; // CW adds
+    pulseAccumulated += pulseDelta; // kanan nambah
+    Serial.println("KANANNNN");
   }
   else
   {
-    pulseAccumulated -= pulseDelta; // CCW subtracts
+    pulseAccumulated -= pulseDelta; // kiri ngurang
+    Serial.println("KIRIIII");
   }
 
   // Print for debugging
-  Serial.print("Direction: ");
-  Serial.print(dir == 0 ? "CW" : "CCW");
   Serial.print(" | Pulses (Δ): ");
   Serial.print(pulseDelta);
   Serial.print(" | Accumulated: ");
@@ -268,15 +270,38 @@ void stepperControl()
   if (pulseAccumulated > pulseLimit)
   {
     accumulated = 1;
-    limitDirection = 1; // right side limit
+    limitDirection = 0; // right side limit
     Serial.println("Right limit reached");
   }
   else if (pulseAccumulated < -pulseLimit)
   {
     accumulated = 1;
-    limitDirection = 0; // left side limit
+    limitDirection = 1; // left side limit
     Serial.println("Left limit reached");
   }
+
+  // if (accumulated == 1)
+  // {
+  //   // Right limit reached
+  //   if (limitDirection == 1 && dir == 0)
+  //   {
+  //     setFrequency(0, driverPUL); // stop CW
+  //     Serial.println("Blocked CW at right limit");
+  //   }
+  //   // Left limit reached
+  //   else if (limitDirection == 0 && dir == 1)
+  //   {
+  //     setFrequency(0, driverPUL); // stop CCW
+  //     Serial.println("Blocked CCW at left limit");
+  //   }
+  //   else
+  //   {
+  //     // Moving away from limit is allowed
+  //     digitalWrite(driverDIR, dir);
+  //     setFrequency(stepperOut, driverPUL);
+  //     Serial.println("asdasdad");
+  //   }
+  // }
 
   if (accumulated == 1)
   {
@@ -293,21 +318,21 @@ void stepperControl()
     else if (limitDirection == 1 && dir == 0)
     {
       digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
-      setFrequency(1600, driverPUL);
-      // Serial.println("kjkjkjkjkjk");
+      setFrequency(stepperOut, driverPUL);
+      Serial.println("kjkjkjkjkjk");
     }
     else if (limitDirection == 0 && dir == 1)
     {
       digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
-      setFrequency(1600, driverPUL);
-      // Serial.println("hthththththt");
+      setFrequency(stepperOut, driverPUL);
+      Serial.println("hthththththt");
     }
   }
   else if (accumulated == 0)
   {
     digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
-    setFrequency(1600, driverPUL);
-    // Serial.println("poppopopop");
+    setFrequency(stepperOut, driverPUL);
+    Serial.println("poppopopop");
   }
 }
 
@@ -371,8 +396,8 @@ void setup()
 
   steerPosCenter = digitalRead(inductiveProx);
 
-  setFrequency(100, driverPUL);
-  digitalWrite(driverDIR, LOW);
+  // setFrequency(100, driverPUL);
+  // digitalWrite(driverDIR, LOW);
 }
 
 void loop()
@@ -384,8 +409,10 @@ void loop()
     steerPosOK = 1;
     pulseAccumulated = 0; // Reset accumulator
     accumulated = 0;      // Clear limit
-    limitDirection = 0;   // Clear direction
-
+    pulseToggleCount = 0;
+    limitDirection = 0; // Clear direction
+    toggleDelta = 0;
+    pulseDelta = 0;
     // digitalWrite(driverRelay, LOW);
   }
   else if (steerPosOK == 0 && steerPosCenter == HIGH)
@@ -393,11 +420,11 @@ void loop()
     Serial.println("Please center the steering wheel");
   }
 
-  // if (steerPosOK)
-  if (true)
+  if (steerPosOK)
+  // if (true)
   {
     unsigned long currentMillis = millis();
-    if (currentMillis - lastSampling >= 1000)
+    if (currentMillis - lastSampling >= 10)
     {
       lastSampling = currentMillis;
       // pulseAccumulated = pulseToggleCount / 2; // 1 pulse = 2 toggle (HIGH LOW)

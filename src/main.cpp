@@ -35,123 +35,22 @@ unsigned long lastSampling = 0;
 int dir = 0;
 int prevDir = 0;
 
-volatile unsigned long pulseToggleCount = 0;
-unsigned long lastPulseToggleCount = 0;
 int pulseAccumulated = 0;
 int pulseLimit = 200;
-int pulseDelta = 0;
-int toggleDelta = 0;
 
-void setFrequency(uint32_t frequency, uint8_t pin)
+void sendPulsesBlocking(uint8_t pulPin, uint8_t dirPin, int dir, unsigned long pulseCount, unsigned long pulseDelayMicros)
 {
-  // === Special case: stop output ===
-  if (frequency == 0)
+  digitalWrite(dirPin, dir);
+
+  for (unsigned long i = 0; i < pulseCount; i++)
   {
-    // Disable Timer1
-    TCCR1A = 0;
-    TCCR1B = 0;
-    TIMSK1 &= ~(1 << OCIE1A); // Disable interrupt
-
-    // Ensure pin is not toggling anymore
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, LOW);
-
-    // Serial.println("Output stopped.");
-    return;
+    digitalWrite(pulPin, HIGH);
+    delayMicroseconds(5); // short pulse width
+    digitalWrite(pulPin, LOW);
+    delayMicroseconds(pulseDelayMicros);
   }
 
-  // Ensure the frequency is within limits
-  if (frequency > 2000000)
-  {
-    // Serial.println("Frequency out of range (1Hz to 2MHz)");
-    return;
-  }
-
-  // Calculate the timer settings
-  uint16_t prescaler = 1; // Default prescaler
-  uint32_t ocrValue = 16000000 / (2 * prescaler * frequency);
-
-  // Adjust the prescaler and OCR value for different frequency ranges
-  if (ocrValue > 65535)
-  {
-    prescaler = 8;
-    ocrValue = 16000000 / (2 * prescaler * frequency);
-  }
-  if (ocrValue > 65535)
-  {
-    prescaler = 64;
-    ocrValue = 16000000 / (2 * prescaler * frequency);
-  }
-  if (ocrValue > 65535)
-  {
-    prescaler = 256;
-    ocrValue = 16000000 / (2 * prescaler * frequency);
-  }
-  if (ocrValue > 65535)
-  {
-    prescaler = 1024;
-    ocrValue = 16000000 / (2 * prescaler * frequency);
-  }
-
-  if (ocrValue > 65535)
-  {
-    Serial.println("Frequency too low for this configuration.");
-    return;
-  }
-
-  // Set the pin as output
-  pinMode(pin, OUTPUT);
-
-  // Configure Timer1
-  TCCR1A = 0; // Clear Timer/Counter Control Registers
-  TCCR1B = 0;
-  TCCR1A = (1 << COM1A0); // Toggle pin on compare match
-  TCCR1B = (1 << WGM12);  // CTC mode
-
-  // Set the appropriate prescaler
-  switch (prescaler)
-  {
-  case 1:
-    TCCR1B |= (1 << CS10);
-    break;
-  case 8:
-    TCCR1B |= (1 << CS11);
-    break;
-  case 64:
-    TCCR1B |= (1 << CS11) | (1 << CS10);
-    break;
-  case 256:
-    TCCR1B |= (1 << CS12);
-    break;
-  case 1024:
-    TCCR1B |= (1 << CS12) | (1 << CS10);
-    break;
-  }
-
-  // Set the output compare register value
-  OCR1A = ocrValue - 1;
-
-  // Attach the pin to Timer1 (only available on certain pins)
-  if (pin == 11)
-  {
-    TCCR1A |= (1 << COM1A0); // Connect Timer1 to pin 11 (OC1A)
-  }
-  else if (pin == 12)
-  {
-    TCCR1A |= (1 << COM1B0); // Connect Timer1 to pin 12 (OC1B)
-  }
-  else
-  {
-    Serial.println("Invalid pin for Timer1 output.");
-    return;
-  }
-
-  TIMSK1 |= (1 << OCIE1A);
-}
-
-ISR(TIMER1_COMPA_vect)
-{
-  pulseToggleCount++;
+  
 }
 
 void readMS()
@@ -225,7 +124,7 @@ void stepperControl()
   if (stepperOut > 1023)
     stepperOut = 1023;
 
-  stepperOut = map(abs(so), 0, 1023, 0, 6000); // 7000
+  stepperOut = map(abs(so), 0, 1023, 0, 1000); // 7000
 
   if (so > 0) // 0 = KANAN, 1 = KIRI
   {
@@ -238,112 +137,8 @@ void stepperControl()
 
   Serial.print("SO: ");
   Serial.println(so);
-  // pulseAccumulated = pulseToggleCount / 2; // 1 pulse = 2 toggle (HIGH LOW)
-  // Serial.print("Pulses sent: ");
-  // Serial.println(pulseAccumulated);
 
-  // Calculate new toggles since last read
-  // toggleDelta = pulseToggleCount - lastPulseToggleCount;
-  // lastPulseToggleCount = pulseToggleCount;
-
-  // // Each pulse = 2 toggles (HIGH + LOW)
-  // pulseDelta = toggleDelta / 2;
-
-  static unsigned long lastUpdateMicros = micros();
-  unsigned long now = micros();
-  float dt = (now - lastUpdateMicros) / 1e6; // seconds
-  lastUpdateMicros = now;
-  float stepsThisCycle = stepperOut * dt; // steps = Hz * seconds
-
-  // Adjust sign based on direction
-  if (dir == 0)
-  {
-    // pulseAccumulated += pulseDelta; // kanan nambah
-    pulseAccumulated += stepsThisCycle;
-    Serial.println("KANANNNN");
-  }
-  else
-  {
-    // pulseAccumulated -= pulseDelta; // kiri ngurang
-    pulseAccumulated -= stepsThisCycle;
-    Serial.println("KIRIIII");
-  }
-
-  // Print for debugging
-  Serial.print("stepperout: ");
-  Serial.print(stepperOut);
-  Serial.print(" | Steps (Δ): ");
-  Serial.print(stepsThisCycle);
-  Serial.print(" | Accumulated: ");
-  Serial.println(pulseAccumulated);
-
-  if (pulseAccumulated > pulseLimit)
-  {
-    accumulated = 1;
-    limitDirection = 0; // right side limit
-    Serial.println("Right limit reached");
-  }
-  else if (pulseAccumulated < -pulseLimit)
-  {
-    accumulated = 1;
-    limitDirection = 1; // left side limit
-    Serial.println("Left limit reached");
-  }
-
-  // if (accumulated == 1)
-  // {
-  //   // Right limit reached
-  //   if (limitDirection == 1 && dir == 0)
-  //   {
-  //     setFrequency(0, driverPUL); // stop CW
-  //     Serial.println("Blocked CW at right limit");
-  //   }
-  //   // Left limit reached
-  //   else if (limitDirection == 0 && dir == 1)
-  //   {
-  //     setFrequency(0, driverPUL); // stop CCW
-  //     Serial.println("Blocked CCW at left limit");
-  //   }
-  //   else
-  //   {
-  //     // Moving away from limit is allowed
-  //     digitalWrite(driverDIR, dir);
-  //     setFrequency(stepperOut, driverPUL);
-  //     Serial.println("asdasdad");
-  //   }
-  // }
-
-  if (accumulated == 1)
-  {
-    if (limitDirection == 1 && dir == 1)
-    {
-      setFrequency(0, driverPUL);
-      // Serial.println("asdasdasd");
-    }
-    else if (limitDirection == 0 && dir == 0)
-    {
-      setFrequency(0, driverPUL);
-      // Serial.println("werwer");
-    }
-    else if (limitDirection == 1 && dir == 0)
-    {
-      digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
-      setFrequency(stepperOut, driverPUL);
-      Serial.println("kjkjkjkjkjk");
-    }
-    else if (limitDirection == 0 && dir == 1)
-    {
-      digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
-      setFrequency(stepperOut, driverPUL);
-      Serial.println("hthththththt");
-    }
-  }
-  else if (accumulated == 0)
-  {
-    digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
-    setFrequency(stepperOut, driverPUL);
-    Serial.println("poppopopop");
-  }
+  sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
 }
 
 void printSerialData()
@@ -405,6 +200,8 @@ void setup()
   sei(); // Enable global interrupts
 
   steerPosCenter = digitalRead(inductiveProx);
+  // sendPulsesNonBlocking(driverPUL, driverDIR, 1, 30000, 5);
+  // sendPulsesBlocking(driverPUL, driverDIR, 1, 1000, 1000);
 
   // setFrequency(100, driverPUL);
   // digitalWrite(driverDIR, LOW);
@@ -419,10 +216,8 @@ void loop()
     steerPosOK = 1;
     pulseAccumulated = 0; // Reset accumulator
     accumulated = 0;      // Clear limit
-    pulseToggleCount = 0;
     limitDirection = 0; // Clear direction
-    toggleDelta = 0;
-    pulseDelta = 0;
+
     // digitalWrite(driverRelay, LOW);
   }
   else if (steerPosOK == 0 && steerPosCenter == HIGH)
@@ -433,17 +228,12 @@ void loop()
   if (steerPosOK)
   // if (true)
   {
-    unsigned long currentMillis = micros();
+    unsigned long currentMillis = millis();
     if (currentMillis - lastSampling >= 100)
     // if (true)
     {
       lastSampling = currentMillis;
-      // pulseAccumulated = pulseToggleCount / 2; // 1 pulse = 2 toggle (HIGH LOW)
-      // Serial.print("Pulses sent: ");
-      // Serial.println(pulseAccumulated);
-      // pulseToggleCount = 0;
-      // Serial.println(pulseToggleCount);
-
+      // sendPulsesBlocking(driverPUL, driverDIR, 1, 100, 1000);
       readMS();
       stepperControl();
     }

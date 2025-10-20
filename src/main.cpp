@@ -7,7 +7,7 @@ const int controlMode = 0;
 
 const float sp = 300;
 
-const float Kp = 2; // 5
+const float Kp = 1; // 5
 const float Ki = 0.01;
 const float Kd = 1.0;
 
@@ -36,7 +36,7 @@ int dir = 0;
 int prevDir = 0;
 
 int pulseAccumulated = 0;
-int pulseLimit = 4000;
+int pulseLimit = 1000;
 
 void sendPulsesBlocking(uint8_t pulPin, uint8_t dirPin, int dir, unsigned long pulseCount, unsigned long pulseDelayMicros)
 {
@@ -48,15 +48,24 @@ void sendPulsesBlocking(uint8_t pulPin, uint8_t dirPin, int dir, unsigned long p
     delayMicroseconds(5); // short pulse width
     digitalWrite(pulPin, LOW);
     delayMicroseconds(pulseDelayMicros);
-  }
 
-  if (dir == 0)
-  {
-    pulseAccumulated += pulseCount;
-  }
-  else if (dir == 0)
-  {
-    pulseAccumulated -= pulseCount;
+    // if (dir == 0)
+    // {
+    //   pulseAccumulated += 1;
+    // }
+    // else if (dir == 1)
+    // {
+    //   pulseAccumulated -= 1;
+    // }
+
+    // if (pulseAccumulated > pulseLimit)
+    // {
+    //   break;
+    // }
+    // else if (pulseAccumulated < -pulseLimit)
+    // {
+    //   break;
+    // }
   }
 }
 
@@ -125,21 +134,29 @@ void readMS()
 
 void stepperControl()
 {
-  stepperOut = abs(so);
-  if (stepperOut > 1023)
-    stepperOut = 1023;
+  // stepperOut = abs(so);
+  // if (stepperOut > 1023)
+  //   stepperOut = 1023;
 
   // stepperOut = map(abs(so), 0, 1023, 0, 1000); // 7000
 
   // y = x^2
-  float normalized = 1 + abs(so) / 1023.0; // Normalize to 0–1 range
-  float exponent = 2.0;                // Adjust for desired curve
-  float scaled = pow(normalized, exponent);
-  stepperOut = 10 * scaled; // Exponential scaling
+  // float normalized = 1 + abs(so) / 1023.0; // Normalize to 0–1 range
+  float exponent = 1.5;
+  float scaled = pow(so, exponent);
+  stepperOut = 0.002 * scaled;
+  int roundedPulse = round(stepperOut);
 
-  Serial.println(normalized);
-  Serial.println(scaled);
-  Serial.println(stepperOut);
+  Serial.print("SO: ");
+  Serial.print(so);
+  // Serial.print("\tNormalized: ");
+  // Serial.print(normalized);
+  Serial.print("\tScaled: ");
+  Serial.print(scaled);
+  Serial.print("\tStepperOut: ");
+  Serial.print(stepperOut);
+  Serial.print("\tRounded: ");
+  Serial.print(roundedPulse);
 
   if (so > 0) // 0 = KANAN, 1 = KIRI
   {
@@ -192,12 +209,7 @@ void stepperControl()
     sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
     Serial.println("poppopopop");
   }
-  ///
-
   // sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
-
-  Serial.print("SO: ");
-  Serial.println(so);
 }
 
 void setup()
@@ -250,7 +262,7 @@ void loop()
     // if (true)
     {
       lastSampling = currentMillis;
-      // sendPulsesBlocking(driverPUL, driverDIR, 1, 100, 1000);
+      // sendPulsesBlocking(driverPUL, driverDIR, 1, 100, 500);
       readMS();
       stepperControl();
     }

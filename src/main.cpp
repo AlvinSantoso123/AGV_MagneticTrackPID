@@ -36,7 +36,7 @@ int dir = 0;
 int prevDir = 0;
 
 int pulseAccumulated = 0;
-int pulseLimit = 200;
+int pulseLimit = 4000;
 
 void sendPulsesBlocking(uint8_t pulPin, uint8_t dirPin, int dir, unsigned long pulseCount, unsigned long pulseDelayMicros)
 {
@@ -50,7 +50,14 @@ void sendPulsesBlocking(uint8_t pulPin, uint8_t dirPin, int dir, unsigned long p
     delayMicroseconds(pulseDelayMicros);
   }
 
-  
+  if (dir == 0)
+  {
+    pulseAccumulated += pulseCount;
+  }
+  else if (dir == 0)
+  {
+    pulseAccumulated -= pulseCount;
+  }
 }
 
 void readMS()
@@ -61,9 +68,7 @@ void readMS()
   e = sp - si;
 
   // Integral Control
-  // integral = integral + e;
-
-  // integral = integral + e;
+  integral = integral + e;
 
   if ((e > 0 && ePrevious < 0) || (e < 0 && ePrevious > 0))
   {
@@ -73,7 +78,7 @@ void readMS()
   {
     integral = 10000;
   }
-  else if (integral <= 00000)
+  else if (integral <= 10000)
   {
     integral = -10000;
   }
@@ -124,7 +129,17 @@ void stepperControl()
   if (stepperOut > 1023)
     stepperOut = 1023;
 
-  stepperOut = map(abs(so), 0, 1023, 0, 1000); // 7000
+  // stepperOut = map(abs(so), 0, 1023, 0, 1000); // 7000
+
+  // y = x^2
+  float normalized = 1 + abs(so) / 1023.0; // Normalize to 0–1 range
+  float exponent = 2.0;                // Adjust for desired curve
+  float scaled = pow(normalized, exponent);
+  stepperOut = 10 * scaled; // Exponential scaling
+
+  Serial.println(normalized);
+  Serial.println(scaled);
+  Serial.println(stepperOut);
 
   if (so > 0) // 0 = KANAN, 1 = KIRI
   {
@@ -135,52 +150,54 @@ void stepperControl()
     dir = 1; // so nya - -> kiri
   }
 
+  if (pulseAccumulated > pulseLimit)
+  {
+    accumulated = 1;
+    limitDirection = 0; // right side limit
+    Serial.println("Right limit reached");
+  }
+  else if (pulseAccumulated < -pulseLimit)
+  {
+    accumulated = 1;
+    limitDirection = 1; // left side limit
+    Serial.println("Left limit reached");
+  }
+
+  if (accumulated == 1)
+  {
+    if (limitDirection == 1 && dir == 1)
+    {
+      Serial.println("asdasdasd");
+    }
+    else if (limitDirection == 0 && dir == 0)
+    {
+      Serial.println("werwer");
+    }
+    else if (limitDirection == 1 && dir == 0)
+    {
+      digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
+      sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
+      Serial.println("kjkjkjkjkjk");
+    }
+    else if (limitDirection == 0 && dir == 1)
+    {
+      digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
+      sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
+      Serial.println("hthththththt");
+    }
+  }
+  else if (accumulated == 0)
+  {
+    digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
+    sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
+    Serial.println("poppopopop");
+  }
+  ///
+
+  // sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
+
   Serial.print("SO: ");
   Serial.println(so);
-
-  sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
-}
-
-void printSerialData()
-{
-  unsigned long currentMillis = millis();
-  if (currentMillis - lastSerialPrintTime >= 100)
-  {
-    lastSerialPrintTime = currentMillis;
-
-    Serial.print("System Input: ");
-    Serial.print(si);
-    Serial.print("\tError: ");
-    Serial.print(e);
-    Serial.print("\tIntegral: ");
-    Serial.print(integral);
-    Serial.print("\tDerivative: ");
-    Serial.print(derivative);
-    Serial.print("\tSystem Output: ");
-    Serial.print(so);
-    Serial.print("\tStepper Output Freq: ");
-    Serial.print(stepperOut);
-
-    // Setir ke kanan, CCW. kiri CW
-    if (so > 0)
-    {
-      // digitalWrite(driverDIR, LOW);
-      // setFrequency(stepperOut, driverPUL);
-      Serial.println("\tCW");
-    }
-    else if (so < 0)
-    {
-      // digitalWrite(driverDIR, HIGH);
-      // setFrequency(stepperOut, driverPUL);
-      Serial.println("\tCCW");
-    }
-    else
-    {
-      // setFrequency(0, driverPUL);
-    }
-
-    integral = integral + e;
-  }
 }
 
 void setup()
@@ -197,7 +214,7 @@ void setup()
 
   Serial.begin(9600);
   Serial.println("Start");
-  sei(); // Enable global interrupts
+  // sei(); // Enable global interrupts
 
   steerPosCenter = digitalRead(inductiveProx);
   // sendPulsesNonBlocking(driverPUL, driverDIR, 1, 30000, 5);
@@ -216,7 +233,7 @@ void loop()
     steerPosOK = 1;
     pulseAccumulated = 0; // Reset accumulator
     accumulated = 0;      // Clear limit
-    limitDirection = 0; // Clear direction
+    limitDirection = 0;   // Clear direction
 
     // digitalWrite(driverRelay, LOW);
   }
@@ -229,7 +246,7 @@ void loop()
   // if (true)
   {
     unsigned long currentMillis = millis();
-    if (currentMillis - lastSampling >= 100)
+    if (currentMillis - lastSampling >= 10)
     // if (true)
     {
       lastSampling = currentMillis;
@@ -255,7 +272,7 @@ Kalo terlalu lambat atau kurang cepat banting setirnya, Gain (K) nya diganti
 Proportional Control
 
 sp = Set Point
-so = System Output (Sensor Sensed Value)
+so = System Output
 si = System Input
 e = Error
 k = Proportional Gain Factor

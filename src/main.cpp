@@ -4,8 +4,9 @@
 
 float si, e, so, integral, derivative, ePrevious = 0;
 const int controlMode = 0;
+float prevSi = 0;
 
-const float sp = 290; //300
+const float sp = 290; // 300
 
 const float Kp = 1; // 5
 const float Ki = 0.01;
@@ -38,6 +39,8 @@ int prevDir = 0;
 int pulseAccumulated = 0;
 int pulseLimit = 1800;
 
+int outOfTrack = 0;
+
 void sendPulsesBlocking(uint8_t pulPin, uint8_t dirPin, int dir, unsigned long pulseCount, unsigned long pulseDelayMicros)
 {
   digitalWrite(dirPin, dir);
@@ -48,24 +51,6 @@ void sendPulsesBlocking(uint8_t pulPin, uint8_t dirPin, int dir, unsigned long p
     delayMicroseconds(5); // short pulse width
     digitalWrite(pulPin, LOW);
     delayMicroseconds(pulseDelayMicros);
-
-    // if (dir == 0)
-    // {
-    //   pulseAccumulated += 1;
-    // }
-    // else if (dir == 1)
-    // {
-    //   pulseAccumulated -= 1;
-    // }
-
-    // if (pulseAccumulated > pulseLimit)
-    // {
-    //   break;
-    // }
-    // else if (pulseAccumulated < -pulseLimit)
-    // {
-    //   break;
-    // }
   }
 }
 
@@ -73,7 +58,27 @@ void readMS()
 {
   si = analogRead(si_pin);
 
-  // Proportional Control
+  // 200an pas floating
+  // Pojok kanan 500-600 an
+  // Pojok kiri 0
+
+  if (si - prevSi > 150)
+  {
+    // Segera belok kiri
+    outOfTrack = 1;
+    sendPulsesBlocking(driverPUL, driverDIR, 1, 20, 30);
+  }
+  else if (si - prevSi < -450)
+  {
+    // Segera belok kanan
+    outOfTrack = 1;
+    sendPulsesBlocking(driverPUL, driverDIR, 0, 20, 30);
+  } else
+  {
+    prevSi = si;
+    outOfTrack = 0;
+  }
+
   e = sp - si;
 
   // Integral Control
@@ -265,7 +270,11 @@ void loop()
       lastSampling = currentMillis;
       // sendPulsesBlocking(driverPUL, driverDIR, 1, 50, 30);
       readMS();
-      stepperControl();
+
+      if (outOfTrack == 0)
+      {
+        stepperControl();
+      }
     }
   }
 }

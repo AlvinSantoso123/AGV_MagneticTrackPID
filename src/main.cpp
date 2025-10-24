@@ -58,25 +58,50 @@ void readMS()
 {
   si = analogRead(si_pin);
 
+  Serial.print("si: ");
+  Serial.print(si);
+  Serial.print("\tprev si: ");
+  Serial.print(prevSi);
   // 200an pas floating
   // Pojok kanan 500-600 an
   // Pojok kiri 0
+  /*
+  Lepas di kiri
+  
+  prevSi = ~550
 
-  if (si - prevSi > 150)
+  pas dekat
+  si = ~280
+
+  pas jauh
+  si = ~430
+
+  Lepas di kanan
+
+  prevSi = ~0
+
+  pas dekat = ~280
+
+  pas jauh = ~430
+  */
+  if (si - prevSi < -150)
   {
     // Segera belok kiri
     outOfTrack = 1;
     sendPulsesBlocking(driverPUL, driverDIR, 1, 20, 30);
+    Serial.println("aaaaaaa");
   }
-  else if (si - prevSi < -450)
+  else if (si - prevSi > 400)
   {
     // Segera belok kanan
     outOfTrack = 1;
     sendPulsesBlocking(driverPUL, driverDIR, 0, 20, 30);
+    Serial.println("bbbbbbb");
   } else
   {
     prevSi = si;
     outOfTrack = 0;
+    Serial.println("asdfjosiefjowijfoiwj");
   }
 
   e = sp - si;
@@ -235,6 +260,8 @@ void setup()
   // sei(); // Enable global interrupts
 
   steerPosCenter = digitalRead(inductiveProx);
+  si = analogRead(A1);
+  prevSi = si;
   // sendPulsesNonBlocking(driverPUL, driverDIR, 1, 30000, 5);
   // sendPulsesBlocking(driverPUL, driverDIR, 1, 3000, 30);
 

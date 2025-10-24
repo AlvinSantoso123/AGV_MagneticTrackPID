@@ -5,7 +5,7 @@
 float si, e, so, integral, derivative, ePrevious = 0;
 const int controlMode = 0;
 
-const float sp = 300;
+const float sp = 290; //300
 
 const float Kp = 1; // 5
 const float Ki = 0.01;
@@ -36,7 +36,7 @@ int dir = 0;
 int prevDir = 0;
 
 int pulseAccumulated = 0;
-int pulseLimit = 1000;
+int pulseLimit = 1800;
 
 void sendPulsesBlocking(uint8_t pulPin, uint8_t dirPin, int dir, unsigned long pulseCount, unsigned long pulseDelayMicros)
 {
@@ -124,8 +124,8 @@ void readMS()
     break;
   }
 
-  // Serial.print("System Input: ");
-  // Serial.println(si);
+  // Serial.print("si: ");
+  // Serial.print(si);
   // Serial.print("Error: ");
   // Serial.println(e);
   // Serial.print("System Output: ");
@@ -142,21 +142,21 @@ void stepperControl()
 
   // y = x^2
   // float normalized = 1 + abs(so) / 1023.0; // Normalize to 0–1 range
-  float exponent = 1.5;
+  float exponent = 2.0;
   float scaled = pow(so, exponent);
-  stepperOut = 0.002 * scaled;
+  stepperOut = 0.0002 * scaled;
   int roundedPulse = round(stepperOut);
 
-  Serial.print("SO: ");
-  Serial.print(so);
+  // Serial.print("\tSO: ");
+  // Serial.print(so);
   // Serial.print("\tNormalized: ");
   // Serial.print(normalized);
-  Serial.print("\tScaled: ");
-  Serial.print(scaled);
-  Serial.print("\tStepperOut: ");
-  Serial.print(stepperOut);
-  Serial.print("\tRounded: ");
-  Serial.print(roundedPulse);
+  // Serial.print("\tScaled: ");
+  // Serial.print(scaled);
+  // Serial.print("\tStepperOut: ");
+  // Serial.print(stepperOut);
+  // Serial.print("\tRounded: ");
+  // Serial.print(roundedPulse);
 
   if (so > 0) // 0 = KANAN, 1 = KIRI
   {
@@ -167,49 +167,50 @@ void stepperControl()
     dir = 1; // so nya - -> kiri
   }
 
-  if (pulseAccumulated > pulseLimit)
-  {
-    accumulated = 1;
-    limitDirection = 0; // right side limit
-    Serial.println("Right limit reached");
-  }
-  else if (pulseAccumulated < -pulseLimit)
-  {
-    accumulated = 1;
-    limitDirection = 1; // left side limit
-    Serial.println("Left limit reached");
-  }
+  // if (pulseAccumulated > pulseLimit)
+  // {
+  //   accumulated = 1;
+  //   limitDirection = 0; // right side limit
+  //   Serial.println("Right limit reached");
+  // }
+  // else if (pulseAccumulated < -pulseLimit)
+  // {
+  //   accumulated = 1;
+  //   limitDirection = 1; // left side limit
+  //   Serial.println("Left limit reached");
+  // }
 
-  if (accumulated == 1)
-  {
-    if (limitDirection == 1 && dir == 1)
-    {
-      Serial.println("asdasdasd");
-    }
-    else if (limitDirection == 0 && dir == 0)
-    {
-      Serial.println("werwer");
-    }
-    else if (limitDirection == 1 && dir == 0)
-    {
-      digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
-      sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
-      Serial.println("kjkjkjkjkjk");
-    }
-    else if (limitDirection == 0 && dir == 1)
-    {
-      digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
-      sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
-      Serial.println("hthththththt");
-    }
-  }
-  else if (accumulated == 0)
-  {
-    digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
-    sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
-    Serial.println("poppopopop");
-  }
+  // if (accumulated == 1)
+  // {
+  //   if (limitDirection == 1 && dir == 1)
+  //   {
+  //     Serial.println("asdasdasd");
+  //   }
+  //   else if (limitDirection == 0 && dir == 0)
+  //   {
+  //     Serial.println("werwer");
+  //   }
+  //   else if (limitDirection == 1 && dir == 0)
+  //   {
+  //     digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
+  //     sendPulsesBlocking(driverPUL, driverDIR, dir, roundedPulse, 30);
+  //     Serial.println("kjkjkjkjkjk");
+  //   }
+  //   else if (limitDirection == 0 && dir == 1)
+  //   {
+  //     digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
+  //     sendPulsesBlocking(driverPUL, driverDIR, dir, roundedPulse, 30);
+  //     Serial.println("hthththththt");
+  //   }
+  // }
+  // else if (accumulated == 0)
+  // {
+  //   digitalWrite(driverDIR, dir); // Klo ganti driver ini disesuaikan
+  //   sendPulsesBlocking(driverPUL, driverDIR, dir, roundedPulse, 30);
+  //   // Serial.println("poppopopop");
+  // }
   // sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
+  sendPulsesBlocking(driverPUL, driverDIR, dir, roundedPulse, 30);
 }
 
 void setup()
@@ -230,7 +231,7 @@ void setup()
 
   steerPosCenter = digitalRead(inductiveProx);
   // sendPulsesNonBlocking(driverPUL, driverDIR, 1, 30000, 5);
-  // sendPulsesBlocking(driverPUL, driverDIR, 1, 1000, 1000);
+  // sendPulsesBlocking(driverPUL, driverDIR, 1, 3000, 30);
 
   // setFrequency(100, driverPUL);
   // digitalWrite(driverDIR, LOW);
@@ -258,11 +259,11 @@ void loop()
   // if (true)
   {
     unsigned long currentMillis = millis();
-    if (currentMillis - lastSampling >= 10)
+    if (currentMillis - lastSampling >= 5)
     // if (true)
     {
       lastSampling = currentMillis;
-      // sendPulsesBlocking(driverPUL, driverDIR, 1, 100, 500);
+      // sendPulsesBlocking(driverPUL, driverDIR, 1, 50, 30);
       readMS();
       stepperControl();
     }
@@ -270,6 +271,7 @@ void loop()
 }
 
 /*
+ini stepper lama
 Stepper Motor
 
 Pin PUL dikasih pulse buat ngatur kecepatan, freq up, speed up

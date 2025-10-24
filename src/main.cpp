@@ -141,22 +141,23 @@ void stepperControl()
   // stepperOut = map(abs(so), 0, 1023, 0, 1000); // 7000
 
   // y = x^2
-  // float normalized = 1 + abs(so) / 1023.0; // Normalize to 0–1 range
-  float exponent = 2.0;
-  float scaled = pow(so, exponent);
-  stepperOut = 0.0002 * scaled;
-  int roundedPulse = round(stepperOut);
+  // float normalized = 1 + abs(so) / 1023.0; // Normalize to 0–1 range ini gk perlu mungkin
+  // float exponent = 2.0;
+  // float scaled = pow(so, exponent);
+  // stepperOut = 0.0002 * scaled;
+  // int roundedPulse = round(stepperOut);
+  int roundedPulse = abs(round(so));
 
-  // Serial.print("\tSO: ");
-  // Serial.print(so);
+  Serial.print("\tSO: ");
+  Serial.print(so);
   // Serial.print("\tNormalized: ");
   // Serial.print(normalized);
   // Serial.print("\tScaled: ");
   // Serial.print(scaled);
   // Serial.print("\tStepperOut: ");
   // Serial.print(stepperOut);
-  // Serial.print("\tRounded: ");
-  // Serial.print(roundedPulse);
+  Serial.print("\tRounded: ");
+  Serial.println(roundedPulse);
 
   if (so > 0) // 0 = KANAN, 1 = KIRI
   {

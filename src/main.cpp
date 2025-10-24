@@ -4,10 +4,11 @@
 
 float si, e, so, integral, derivative, ePrevious = 0;
 const int controlMode = 0;
+const int dt = 5;
 
 const float sp = 290; //300
 
-const float Kp = 1; // 5
+const float Kp = 1.1; // 5
 const float Ki = 0.01;
 const float Kd = 1.0;
 
@@ -93,7 +94,7 @@ void readMS()
   }
 
   // Derivative Control
-  derivative = ePrevious - e;
+  derivative = (ePrevious - e) / dt;
   ePrevious = e;
 
   switch (controlMode)
@@ -141,23 +142,22 @@ void stepperControl()
   // stepperOut = map(abs(so), 0, 1023, 0, 1000); // 7000
 
   // y = x^2
-  // float normalized = 1 + abs(so) / 1023.0; // Normalize to 0–1 range ini gk perlu mungkin
-  // float exponent = 2.0;
-  // float scaled = pow(so, exponent);
-  // stepperOut = 0.0002 * scaled;
-  // int roundedPulse = round(stepperOut);
-  int roundedPulse = abs(round(so));
+  // float normalized = 1 + abs(so) / 1023.0; // Normalize to 0–1 range
+  float exponent = 2.0;
+  float scaled = pow(so, exponent);
+  stepperOut = 0.0002 * scaled;
+  int roundedPulse = round(stepperOut);
 
-  Serial.print("\tSO: ");
-  Serial.print(so);
+  // Serial.print("\tSO: ");
+  // Serial.print(so);
   // Serial.print("\tNormalized: ");
   // Serial.print(normalized);
   // Serial.print("\tScaled: ");
   // Serial.print(scaled);
   // Serial.print("\tStepperOut: ");
   // Serial.print(stepperOut);
-  Serial.print("\tRounded: ");
-  Serial.println(roundedPulse);
+  // Serial.print("\tRounded: ");
+  // Serial.print(roundedPulse);
 
   if (so > 0) // 0 = KANAN, 1 = KIRI
   {
@@ -260,7 +260,7 @@ void loop()
   // if (true)
   {
     unsigned long currentMillis = millis();
-    if (currentMillis - lastSampling >= 5)
+    if (currentMillis - lastSampling >= dt)
     // if (true)
     {
       lastSampling = currentMillis;

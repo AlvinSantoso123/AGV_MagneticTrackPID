@@ -2,15 +2,20 @@
 
 #define si_pin A1
 
-float si, e, so, integral, derivative, ePrevious = 0;
-const int controlMode = 0;
-const int dt = 5;
+float si;
+float e = 0;
+float so = 0;
+float integral = 0;
+float derivative = 0;
+float ePrevious = 0;
+const int controlMode = 4;
+const int dt = 10;
 
 const float sp = 290; //300
 
-const float Kp = 1.1; // 5
+const float Kp = 0.04; // 5
 const float Ki = 0.01;
-const float Kd = 1.0;
+const float Kd = 1.3;
 
 const float b = 0;
 
@@ -94,7 +99,7 @@ void readMS()
   }
 
   // Derivative Control
-  derivative = (ePrevious - e) / dt;
+  derivative = ePrevious - e;
   ePrevious = e;
 
   switch (controlMode)
@@ -139,14 +144,15 @@ void stepperControl()
   // if (stepperOut > 1023)
   //   stepperOut = 1023;
 
-  // stepperOut = map(abs(so), 0, 1023, 0, 1000); // 7000
+  // stepperOut = map(abs(so), 0, 1023, 0, 80); // 7000
+  stepperOut = abs(round(so));
 
   // y = x^2
   // float normalized = 1 + abs(so) / 1023.0; // Normalize to 0–1 range
-  float exponent = 2.0;
-  float scaled = pow(so, exponent);
-  stepperOut = 0.0002 * scaled;
-  int roundedPulse = round(stepperOut);
+  // float exponent = 2.0;
+  // float scaled = pow(abs(so), exponent);
+  // stepperOut = 0.015 * scaled;
+  // int roundedPulse = round(stepperOut);
 
   // Serial.print("\tSO: ");
   // Serial.print(so);
@@ -210,8 +216,8 @@ void stepperControl()
   //   sendPulsesBlocking(driverPUL, driverDIR, dir, roundedPulse, 30);
   //   // Serial.println("poppopopop");
   // }
-  // sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 500);
-  sendPulsesBlocking(driverPUL, driverDIR, dir, roundedPulse, 30);
+  sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 20);
+  // sendPulsesBlocking(driverPUL, driverDIR, dir, roundedPulse, 30);
 }
 
 void setup()

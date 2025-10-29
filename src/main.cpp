@@ -58,16 +58,16 @@ void readMS()
 {
   si = analogRead(si_pin);
 
-  Serial.print("si: ");
-  Serial.print(si);
-  Serial.print("\tprev si: ");
-  Serial.print(prevSi);
+  // Serial.print("si: ");
+  // Serial.print(si);
+  // Serial.print("\tprev si: ");
+  // Serial.print(prevSi);
   // 200an pas floating
   // Pojok kanan 500-600 an
   // Pojok kiri 0
   /*
   Lepas di kiri
-  
+
   prevSi = ~550
 
   pas dekat
@@ -84,25 +84,35 @@ void readMS()
 
   pas jauh = ~430
   */
+
   if (si - prevSi < -150)
   {
     // Segera belok kiri
     outOfTrack = 1;
-    sendPulsesBlocking(driverPUL, driverDIR, 1, 20, 30);
     Serial.println("aaaaaaa");
   }
   else if (si - prevSi > 400)
   {
     // Segera belok kanan
-    outOfTrack = 1;
-    sendPulsesBlocking(driverPUL, driverDIR, 0, 20, 30);
+    outOfTrack = 2;
     Serial.println("bbbbbbb");
-  } else
+  }
+  else if (si - prevSi > 200)
   {
-    prevSi = si;
+    if (outOfTrack == 1)
+    {
+      sendPulsesBlocking(driverPUL, driverDIR, 1, 20, 30);
+    }
+    else if (outOfTrack == 2)
+    {
+      sendPulsesBlocking(driverPUL, driverDIR, 0, 20, 30);
+    }
+  } else if (250 < si && si < 330)
+  {
     outOfTrack = 0;
     Serial.println("asdfjosiefjowijfoiwj");
   }
+  prevSi = si;
 
   e = sp - si;
 
@@ -176,17 +186,6 @@ void stepperControl()
   float scaled = pow(so, exponent);
   stepperOut = 0.0002 * scaled;
   int roundedPulse = round(stepperOut);
-
-  // Serial.print("\tSO: ");
-  // Serial.print(so);
-  // Serial.print("\tNormalized: ");
-  // Serial.print(normalized);
-  // Serial.print("\tScaled: ");
-  // Serial.print(scaled);
-  // Serial.print("\tStepperOut: ");
-  // Serial.print(stepperOut);
-  // Serial.print("\tRounded: ");
-  // Serial.print(roundedPulse);
 
   if (so > 0) // 0 = KANAN, 1 = KIRI
   {

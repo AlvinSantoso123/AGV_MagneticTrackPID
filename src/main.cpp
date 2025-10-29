@@ -8,13 +8,12 @@ float so = 0;
 float integral = 0;
 float derivative = 0;
 float ePrevious = 0;
-const int controlMode = 4;
-const int dt = 10;
+const int controlMode = 3;
 
-const float sp = 290; //300
+const float sp = 290; // 300
 
-const float Kp = 0.04; // 5
-const float Ki = 0.01;
+const float Kp = 0.045; // 0.08 Ok?
+const float Ki = 0.0008;
 const float Kd = 1.3;
 
 const float b = 0;
@@ -30,7 +29,7 @@ int driverRelay = 7;
 float stepperOut = 0;
 float stepperPulseDelay = 0;
 
-unsigned long lastSerialPrintTime = 0;
+unsigned long timeDelta = 0;
 int brakeSwitchState = 0;
 int steerPosCenter = 0;
 int steerPosOK = 0;
@@ -83,23 +82,23 @@ void readMS()
   e = sp - si;
 
   // Integral Control
-  integral = integral + e;
+  integral += e;
 
   if ((e > 0 && ePrevious < 0) || (e < 0 && ePrevious > 0))
   {
     // integral = 0; // Reset integral on error sign change
   }
-  else if (integral >= 10000)
+  else if (integral >= 800)
   {
-    integral = 10000;
+    integral = 800;
   }
-  else if (integral <= 10000)
+  else if (integral <= -800)
   {
-    integral = -10000;
+    integral = -800;
   }
 
   // Derivative Control
-  derivative = ePrevious - e;
+  derivative = (e - ePrevious) / timeDelta;
   ePrevious = e;
 
   switch (controlMode)
@@ -244,6 +243,20 @@ void setup()
   // digitalWrite(driverDIR, LOW);
 }
 
+void print()
+{
+  Serial.print("si: ");
+  Serial.print(si);
+  Serial.print("\tderivative : ");
+  Serial.print(derivative);
+  Serial.print("\tintegral: ");
+  Serial.print(integral);
+  Serial.print("\tSO: ");
+  Serial.print(so);
+  Serial.print("\tStepperOut: ");
+  Serial.println(stepperOut);
+}
+
 void loop()
 {
   steerPosCenter = digitalRead(inductiveProx);
@@ -266,20 +279,22 @@ void loop()
   // if (true)
   {
     unsigned long currentMillis = millis();
-    if (currentMillis - lastSampling >= dt)
+    if (currentMillis - lastSampling >= 5)
     // if (true)
     {
+      timeDelta = lastSampling - currentMillis;
       lastSampling = currentMillis;
-      // sendPulsesBlocking(driverPUL, driverDIR, 1, 50, 30);
+
+      // sendPulsesBlocking(driverPUL, driverDIR, 1, 50, 100);
       readMS();
       stepperControl();
+      // print();
     }
   }
 }
 
 /*
 ini stepper lama
-Stepper Motor
 
 Pin PUL dikasih pulse buat ngatur kecepatan, freq up, speed up
 Pin DIR dikasih HIGH/LOW buat ngatur arah

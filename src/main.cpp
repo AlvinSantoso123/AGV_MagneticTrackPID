@@ -8,13 +8,15 @@ float so = 0;
 float integral = 0;
 float derivative = 0;
 float ePrevious = 0;
-const int controlMode = 3;
+const int controlMode = 0;
 
-const float sp = 290; // 300
+const float sp = 300; // 300
 
-const float Kp = 0.045; // 0.08 Ok?
-const float Ki = 0.0008;
-const float Kd = 1.3;
+const float Kp = 0.0075; // 0.08 Ok? 0.006 0075
+const float Ki = 0.00085; // 0.00085
+const float Kd = 0.0037; // Terakhir 1.3 ||||| 0.0037
+
+// 0.05 0.04 0.008 Junius
 
 const float b = 0;
 
@@ -88,17 +90,17 @@ void readMS()
   {
     // integral = 0; // Reset integral on error sign change
   }
-  else if (integral >= 800)
+  else if (integral >= 7)
   {
-    integral = 800;
+    integral = 7;
   }
-  else if (integral <= -800)
+  else if (integral <= -7)
   {
-    integral = -800;
+    integral = -7;
   }
 
   // Derivative Control
-  derivative = (e - ePrevious) / timeDelta;
+  derivative = (e - ePrevious);
   ePrevious = e;
 
   switch (controlMode)
@@ -215,8 +217,9 @@ void stepperControl()
   //   sendPulsesBlocking(driverPUL, driverDIR, dir, roundedPulse, 30);
   //   // Serial.println("poppopopop");
   // }
-  sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 20);
+  sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 10);
   // sendPulsesBlocking(driverPUL, driverDIR, dir, roundedPulse, 30);
+  // y = 5x + 10x
 }
 
 void setup()
@@ -279,7 +282,7 @@ void loop()
   // if (true)
   {
     unsigned long currentMillis = millis();
-    if (currentMillis - lastSampling >= 5)
+    if (currentMillis - lastSampling >= 1)
     // if (true)
     {
       timeDelta = lastSampling - currentMillis;

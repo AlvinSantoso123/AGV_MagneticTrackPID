@@ -12,9 +12,9 @@ const int controlMode = 0;
 
 const float sp = 300; // 300
 
-const float Kp = 0.0075; // 0.08 Ok? 0.006 0075
-const float Ki = 0.00085; // 0.00085
-const float Kd = 0.0037; // Terakhir 1.3 ||||| 0.0037
+const float Kp = 0.008; // 0.08 Ok? 0.006 0075
+const float Ki = 0.005; // 0.00085
+const float Kd = 0.2; // Terakhir 1.3 ||||| 0.0037
 
 // 0.05 0.04 0.008 Junius
 
@@ -90,13 +90,13 @@ void readMS()
   {
     // integral = 0; // Reset integral on error sign change
   }
-  else if (integral >= 7)
+  else if (integral >= 6)
   {
-    integral = 7;
+    integral = 6;
   }
-  else if (integral <= -7)
+  else if (integral <= -6)
   {
-    integral = -7;
+    integral = -6;
   }
 
   // Derivative Control

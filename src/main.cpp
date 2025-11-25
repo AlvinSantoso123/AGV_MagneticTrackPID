@@ -39,11 +39,15 @@ int accumulated = 0;
 int limitDirection = 0;
 unsigned long lastSampling = 0;
 
+unsigned long startMoveMillis = 0;
+
 int dir = 0;
 int prevDir = 0;
 
 int pulseAccumulated = 0;
 int pulseLimit = 1800;
+
+bool aaa = false;
 
 void setFrequency(uint32_t frequency, uint8_t pin)
 {
@@ -183,6 +187,28 @@ void sendPulsesBlocking(uint8_t pulPin, uint8_t dirPin, int dir, unsigned long p
 void readMS()
 {
   si = analogRead(si_pin);
+
+  if (150 < si && si < 500)
+  {
+    setFrequency(0, driverPUL);
+  }
+  else
+  {
+    // setFrequency(1000, driverPUL);
+    if (aaa == false) {
+      startMoveMillis = millis();
+      aaa = true;
+    }
+
+    if (millis() - startMoveMillis > 300)
+    {
+      setFrequency(0, driverPUL);
+    }
+    else
+    {
+      setFrequency(7000, driverPUL);
+    }
+  }
 
   // Proportional Control
   e = sp - si;
@@ -347,8 +373,8 @@ void setup()
   // sendPulsesNonBlocking(driverPUL, driverDIR, 1, 30000, 5);
   // sendPulsesBlocking(driverPUL, driverDIR, 1, 3000, 30);
 
-  setFrequency(10000, driverPUL);
-  // digitalWrite(driverDIR, LOW);
+  setFrequency(1000, driverPUL);
+  digitalWrite(driverDIR, LOW);
 }
 
 void print()
@@ -372,14 +398,15 @@ void loop()
   // digitalWrite(driverPUL, LOW);
   // delayMicroseconds(10);
 
-  // unsigned long currentMillis = millis();
+  unsigned long currentMillis = millis();
 
-  // if (currentMillis - lastSampling >= 50)
-  // {
-    // lastSampling = currentMillis;
+  if (currentMillis - lastSampling >= 1)
+  {
+    lastSampling = currentMillis;
     readMS();
-    stepperControl();
-  // }
+
+    // stepperControl();
+  }
 }
 
 /*

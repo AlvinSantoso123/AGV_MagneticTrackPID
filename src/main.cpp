@@ -14,7 +14,7 @@ const float sp = 300; // 300
 
 const float Kp = 0.008; // 0.08 Ok? 0.006 0075
 const float Ki = 0.005; // 0.00085
-const float Kd = 0.2; // Terakhir 1.3 ||||| 0.0037
+const float Kd = 0.2;   // Terakhir 1.3 ||||| 0.0037
 
 // 0.05 0.04 0.008 Junius
 
@@ -174,6 +174,7 @@ void stepperControl()
   {
     dir = 1; // so nya - -> kiri
   }
+  digitalWrite(driverDIR, dir);
 
   // if (pulseAccumulated > pulseLimit)
   // {
@@ -217,7 +218,7 @@ void stepperControl()
   //   sendPulsesBlocking(driverPUL, driverDIR, dir, roundedPulse, 30);
   //   // Serial.println("poppopopop");
   // }
-  sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 10);
+  // sendPulsesBlocking(driverPUL, driverDIR, dir, stepperOut, 10);
   // sendPulsesBlocking(driverPUL, driverDIR, dir, roundedPulse, 30);
   // y = 5x + 10x
 }
@@ -262,37 +263,18 @@ void print()
 
 void loop()
 {
-  steerPosCenter = digitalRead(inductiveProx);
+  digitalWrite(driverPUL, HIGH);
+  delayMicroseconds(5); // short pulse width
+  digitalWrite(driverPUL, LOW);
+  delayMicroseconds(10);
 
-  if (steerPosCenter == LOW)
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - lastSampling >= 50)
   {
-    steerPosOK = 1;
-    pulseAccumulated = 0; // Reset accumulator
-    accumulated = 0;      // Clear limit
-    limitDirection = 0;   // Clear direction
-
-    // digitalWrite(driverRelay, LOW);
-  }
-  else if (steerPosOK == 0 && steerPosCenter == HIGH)
-  {
-    Serial.println("Please center the steering wheel");
-  }
-
-  if (steerPosOK)
-  // if (true)
-  {
-    unsigned long currentMillis = millis();
-    if (currentMillis - lastSampling >= 1)
-    // if (true)
-    {
-      timeDelta = lastSampling - currentMillis;
-      lastSampling = currentMillis;
-
-      // sendPulsesBlocking(driverPUL, driverDIR, 1, 50, 100);
-      readMS();
-      stepperControl();
-      // print();
-    }
+    lastSampling = currentMillis;
+    readMS();
+    stepperControl();
   }
 }
 

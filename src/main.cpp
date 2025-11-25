@@ -45,6 +45,110 @@ int prevDir = 0;
 int pulseAccumulated = 0;
 int pulseLimit = 1800;
 
+void setFrequency(uint32_t frequency, uint8_t pin)
+{
+  // === Special case: stop output ===
+  if (frequency == 0)
+  {
+    // Disable Timer1
+    TCCR1A = 0;
+    TCCR1B = 0;
+
+    // Ensure pin is not toggling anymore
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, LOW);
+
+    // Serial.println("Output stopped.");
+    return;
+  }
+
+  // Ensure the frequency is within limits
+  if (frequency > 2000000)
+  {
+    // Serial.println("Frequency out of range (1Hz to 2MHz)");
+    return;
+  }
+
+  // Calculate the timer settings
+  uint16_t prescaler = 1; // Default prescaler
+  uint32_t ocrValue = 16000000 / (2 * prescaler * frequency);
+
+  // Adjust the prescaler and OCR value for different frequency ranges
+  if (ocrValue > 65535)
+  {
+    prescaler = 8;
+    ocrValue = 16000000 / (2 * prescaler * frequency);
+  }
+  if (ocrValue > 65535)
+  {
+    prescaler = 64;
+    ocrValue = 16000000 / (2 * prescaler * frequency);
+  }
+  if (ocrValue > 65535)
+  {
+    prescaler = 256;
+    ocrValue = 16000000 / (2 * prescaler * frequency);
+  }
+  if (ocrValue > 65535)
+  {
+    prescaler = 1024;
+    ocrValue = 16000000 / (2 * prescaler * frequency);
+  }
+
+  if (ocrValue > 65535)
+  {
+    Serial.println("Frequency too low for this configuration.");
+    return;
+  }
+
+  // Set the pin as output
+  pinMode(pin, OUTPUT);
+
+  // Configure Timer1
+  TCCR1A = 0; // Clear Timer/Counter Control Registers
+  TCCR1B = 0;
+  TCCR1A = (1 << COM1A0); // Toggle pin on compare match
+  TCCR1B = (1 << WGM12);  // CTC mode
+
+  // Set the appropriate prescaler
+  switch (prescaler)
+  {
+  case 1:
+    TCCR1B |= (1 << CS10);
+    break;
+  case 8:
+    TCCR1B |= (1 << CS11);
+    break;
+  case 64:
+    TCCR1B |= (1 << CS11) | (1 << CS10);
+    break;
+  case 256:
+    TCCR1B |= (1 << CS12);
+    break;
+  case 1024:
+    TCCR1B |= (1 << CS12) | (1 << CS10);
+    break;
+  }
+
+  // Set the output compare register value
+  OCR1A = ocrValue - 1;
+
+  // Attach the pin to Timer1 (only available on certain pins)
+  if (pin == 11)
+  {
+    TCCR1A |= (1 << COM1A0); // Connect Timer1 to pin 11 (OC1A)
+  }
+  else if (pin == 12)
+  {
+    TCCR1A |= (1 << COM1B0); // Connect Timer1 to pin 12 (OC1B)
+  }
+  else
+  {
+    Serial.println("Invalid pin for Timer1 output.");
+    return;
+  }
+}
+
 void sendPulsesBlocking(uint8_t pulPin, uint8_t dirPin, int dir, unsigned long pulseCount, unsigned long pulseDelayMicros)
 {
   digitalWrite(dirPin, dir);
@@ -239,11 +343,11 @@ void setup()
   Serial.println("Start");
   // sei(); // Enable global interrupts
 
-  steerPosCenter = digitalRead(inductiveProx);
+  // steerPosCenter = digitalRead(inductiveProx);
   // sendPulsesNonBlocking(driverPUL, driverDIR, 1, 30000, 5);
   // sendPulsesBlocking(driverPUL, driverDIR, 1, 3000, 30);
 
-  // setFrequency(100, driverPUL);
+  setFrequency(10000, driverPUL);
   // digitalWrite(driverDIR, LOW);
 }
 
@@ -263,19 +367,19 @@ void print()
 
 void loop()
 {
-  digitalWrite(driverPUL, HIGH);
-  delayMicroseconds(5); // short pulse width
-  digitalWrite(driverPUL, LOW);
-  delayMicroseconds(10);
+  // digitalWrite(driverPUL, HIGH);
+  // delayMicroseconds(5); // short pulse width
+  // digitalWrite(driverPUL, LOW);
+  // delayMicroseconds(10);
 
-  unsigned long currentMillis = millis();
+  // unsigned long currentMillis = millis();
 
-  if (currentMillis - lastSampling >= 50)
-  {
-    lastSampling = currentMillis;
+  // if (currentMillis - lastSampling >= 50)
+  // {
+    // lastSampling = currentMillis;
     readMS();
     stepperControl();
-  }
+  // }
 }
 
 /*
